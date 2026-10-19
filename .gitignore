@@ -1,0 +1,35 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# ---- Môi trường ảo ----
+venv/
+.venv/
+env/
+ENV/
+
+# ---- Công cụ test và lint ----
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# ---- Streamlit ----
+# Secrets chứa khóa bí mật, tuyệt đối không đưa lên Git.
+.streamlit/secrets.toml
+
+# ---- IDE và hệ điều hành ----
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Ảnh chụp và báo cáo của tác tử kiểm thử giao diện.
+ui_artifacts/

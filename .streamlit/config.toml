@@ -1,0 +1,11 @@
+# Cấu hình giao diện Dark Mode. Streamlit Cloud đọc file này tự động.
+[theme]
+base = "dark"
+primaryColor = "#00E5FF"
+backgroundColor = "#0E1117"
+secondaryBackgroundColor = "#161B22"
+textColor = "#E6EDF3"
+font = "sans serif"
+
+[server]
+headless = true

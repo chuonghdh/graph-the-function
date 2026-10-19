@@ -1,0 +1,10 @@
+# Thư viện runtime. Phiên bản được ghim để Streamlit Community Cloud build lặp lại được.
+# Yêu cầu Python 3.11 trở lên (khuyến nghị 3.12).
+streamlit==1.66.0
+plotly==7.1.0
+sympy==1.14.0
+numpy==2.5.4
+# Tìm đường mức (đường giao giữa hai mặt 3D). Chỉ phụ thuộc NumPy.
+contourpy==1.4.0
+# Giải số nghiệm phương trình f(x) - g(x) = 0 (brentq, minimize_scalar) cho giao điểm 2D.
+scipy==1.17.1

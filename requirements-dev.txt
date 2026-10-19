@@ -1,0 +1,7 @@
+# Môi trường phát triển: gồm thư viện runtime và công cụ test.
+# Không deploy file này lên Streamlit Cloud.
+-r requirements.txt
+pytest==9.1.1
+
+# Kiểm thử giao diện tự động bằng trình duyệt (ui_test_agent.py). Không cần khi deploy.
+playwright==1.64.0

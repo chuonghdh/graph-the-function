@@ -314,3 +314,127 @@ bảng màu vẫn giữ nguyên.
 - [ ] Bật làm nổi bật rồi chọn `f1 ∩ f2`: đường cong và mặt gốc mờ, đường giao cam dày hơn.
 - [ ] Bỏ hết cặp chọn: không lỗi, không làm mờ toàn bộ.
 - [ ] Không có thông báo nào chứa cụm "được tô sáng".
+
+> **Ghi chú (phiên bản 1.5 trở đi):** công tắc chung ở F20 đã bỏ. Làm nổi bật nay là checkbox cho từng cặp, xem F25.
+
+---
+
+## 11. Phiên bản 1.5 đến 2.8: các yêu cầu hiện hành
+
+Phần này mô tả trạng thái hiện tại. Mục nào thay thế mục cũ đều ghi rõ.
+
+### F21. Nhập động từ 2 đến 6 hàm
+
+- Mặc định có hai ô `f1`, `f2`. Nút "➕ Thêm hàm số" thêm ô, tối đa sáu. Mỗi ô có ✖ để xóa, tối thiểu còn hai ô.
+- Xóa một ô không làm mất nội dung các ô khác (mỗi ô có mã định danh ổn định).
+
+**Tiêu chí chấp nhận:**
+- [ ] Thêm đến sáu ô, nút thêm bị vô hiệu hóa ở ô thứ sáu.
+- [ ] Xóa ô giữa, nội dung ô còn lại không đổi.
+
+### F22. Cú pháp mở rộng
+
+- Thêm `|x|`, `pi` hoặc `π`, `e`, `e^x`, `^`, nhân ẩn `2x`.
+- Phương trình ẩn `A = B` được đổi thành `A − B = 0`.
+
+**Tiêu chí chấp nhận:**
+- [ ] `|x| - 1` và `sin(pi*x)` vẽ được.
+- [ ] `x2` gợi ý `x^2`, `xy` gợi ý `x*y`.
+
+### F23. Thanh legend trên đồ thị
+
+- Mỗi hàm có một checkbox nằm trên đồ thị, mặc định tích.
+- Bỏ tích làm mờ đường hoặc mặt của hàm đó và mọi cặp có liên quan.
+
+**Tiêu chí chấp nhận:**
+- [ ] Bỏ tích `f2`: đường `f2` và các giao điểm có `f2` mờ, các hàm khác không đổi.
+
+### F24. 20 hàm số nổi tiếng
+
+- 10 đường 2D và 10 mặt 3D (`graph_app/presets.py`).
+- Mỗi ô nhập có một biểu tượng 📚 mở danh sách mẫu. Chọn mẫu điền vào đúng ô đó.
+- Mặt trụ dùng dạng `x**2 + y**2 = 9 + sin(z)**2 + cos(z)**2 - 1` để SymPy không tự rút gọn `z` đi.
+
+**Tiêu chí chấp nhận:**
+- [ ] Có đủ 20 mẫu, mỗi mẫu biên dịch được và cho đúng chiều (2D hoặc 3D).
+- [ ] Chọn mẫu cho `f2` không đổi `f1`.
+
+### F25. Làm nổi bật theo từng cặp (thay F20)
+
+- Dưới đồ thị, mỗi cặp giao có một hàng: checkbox, tên cặp và danh sách tọa độ.
+- Tích checkbox: cặp đó phóng to, các đường và cặp khác mờ đi.
+- Cặp không có giao điểm hiện checkbox bị vô hiệu hóa.
+
+**Tiêu chí chấp nhận:**
+- [ ] Tích `f1 ∩ f2`: đường giao của cặp dày hơn, các cặp khác mờ.
+- [ ] Cặp không có giao điểm: checkbox không bấm được.
+
+### F26. Phạm vi trục bằng ô nhập số
+
+- Mỗi trục có hai ô `min` và `max`. Ô `min` phải nhỏ hơn `max`, nếu không ứng dụng báo lỗi và không vẽ.
+- Trục y có công tắc "Tự co giãn khung y" (mặc định bật). Trục x có công tắc "Tự canh khung x theo giao điểm" (mặc định bật).
+- Trục tung của đồ thị 2D luôn hiển thị rõ, có đường trục, tên trục và vạch chia.
+
+**Tiêu chí chấp nhận:**
+- [ ] `min = 7`, `max = 6` với canh khung tắt: báo lỗi, không vẽ.
+- [ ] Trục y rõ ràng trên nền tối.
+
+### F27. Canh khung theo giao điểm (thay cho khung cố định)
+
+- Giao điểm được tính trước, trên cửa sổ dò `±200`. Sau đó mới canh khung x để chứa mọi giao điểm, rồi canh khung y theo đồ thị và giao điểm.
+- Khung x canh bằng bao của giao điểm, có đệm 10% mỗi phía và rộng tối thiểu 12 đơn vị.
+- Khi khung y tự co giãn, giao điểm không bị lọc theo khoảng y cũ.
+- Hai hàm trùng nhau trên một đoạn (vô số giao điểm) không được dùng để canh khung.
+
+**Tiêu chí chấp nhận:**
+- [ ] `x^2 + 4*x - 15` và `x*sin(x)` hiện đủ hai giao điểm `(-6.5597; 1.7907)` và `(2.5235; 1.4623)`, dù khung nhập mặc định là `±6`.
+- [ ] `x^2 - 2` và `20` có giao điểm ở `y = 20`: giao điểm hiện và khung y bao được nó.
+- [ ] `x` và `x` không làm khung lệch khỏi `±6`.
+
+### F28. Giao điểm 2D chính xác
+
+- Hiệu `f − g` là đa thức thì giải đúng bằng SymPy, gồm cả nghiệm bội.
+- Hàm khác: dò đổi dấu trên `samples` đoạn con, rồi chia đôi trên NumPy. Cặp nghiệm nằm trong cùng một ô lưới được bắt bằng đỉnh parabol và cực trị của `h`.
+- Tiếp xúc (không đổi dấu) được bắt bằng cực tiểu của `|h|`.
+- Mọi ứng viên đều được kiểm tra lại `|f − g| ≤ 1e-9` tại điểm đó. Điểm gián đoạn như tiệm cận của `1/x` bị loại.
+- Nghiệm ở mép miền xác định (như `√x = x/2` tại 0) được tìm riêng, với ngưỡng 1e-6.
+
+**Tiêu chí chấp nhận:**
+- [ ] `sin(100x)` có đúng 12733 nghiệm trên `[-200, 200]`.
+- [ ] `1/x = x` cho `±1`, không cho điểm tại tiệm cận.
+- [ ] `√x = x/2` cho `(0, 0)` và `(4, 2)`.
+
+### F29. Giao điểm 2D của đường ẩn, gồm tiếp xúc
+
+- Giao cắt: lưới ô, giải tuyến tính rồi Newton, kiểm tra phần dư.
+- Tiếp xúc: cực tiểu của `F² + G²` rồi Levenberg–Marquardt. Nhánh này bắt được tiếp xúc mà lưới không thấy.
+
+**Tiêu chí chấp nhận:**
+- [ ] `x^2 + y^2 = 25` với `y = 5` cho `(0, 5)`.
+- [ ] `y = x²` với tiếp tuyến `2x - y - 1 = 0` cho `(1, 1)`.
+- [ ] `x^2 + y^2 = 25` với `y = 5.001` không cho điểm nào (không âm tính giả).
+
+### F30. Đường giao 3D chính xác và điểm tiếp xúc
+
+- Đường giao hai mặt tường minh: các điểm được chiếu về `f₁ − f₂ = 0` và z = f₁(x, y). Sai số khoảng `1e-16`.
+- Đường giao hai mặt ẩn: đầu mút đoạn voxel được chiếu về `{F = 0, G = 0}`. Sai số khoảng `1e-16`.
+- Điểm tiếp xúc giữa hai mặt ẩn được tìm và vẽ bằng marker riêng. Sai số khoảng `1e-8` vì là nghiệm kép.
+
+**Tiêu chí chấp nhận:**
+- [ ] `x² + y² + z² = 1` với `z = 1` cho điểm `(0, 0, 1)` có marker.
+- [ ] Paraboloid `z = x² + y²` với `z = 4` cho đường tròn bán kính 2, sai số dưới `1e-9`.
+
+### F31. Hiển thị số lượng lớn
+
+- Quá 200 giao điểm: không gắn nhãn, mọi điểm vẫn có marker.
+- Quá 50 giao điểm của một cặp: chỉ hiện số lượng, không liệt kê tọa độ.
+- Quá 500 dòng: bảng không hiện, chỉ có dòng ghi số lượng.
+
+**Tiêu chí chấp nhận:**
+- [ ] `sin(60x)` và `0.2` trên `±200` (khoảng 7600 giao điểm): không lỗi, không có nhãn, có dòng ghi số lượng.
+
+### Giới hạn đã biết (không thuộc phạm vi các phiên bản này)
+
+- Thay đổi khung bằng chuột trong trình duyệt (zoom, pan) không kích hoạt tính lại. Streamlit không gửi sự kiện này về Python.
+- Tiếp tuyến tại một điểm của đường cong chưa được triển khai. Nó sẽ dùng cùng gradient với F29.
+- Tiếp xúc giữa hai mặt tường minh 3D chưa được đánh dấu bằng điểm.

@@ -42,7 +42,26 @@ Căn cứ: `docs/SPEC.md` phiên bản 1.0.
 └─────────────────────┘   └─────────────────────────┘
 ```
 
-**Quy tắc phụ thuộc:** `app.py` → `plotting` → `math_engine`. Không có chiều ngược. Nhờ vậy `math_engine` và `plotting` kiểm thử được mà không cần khởi động Streamlit.
+**Quy tắc phụ thuộc:** giao diện (`app.py`, `ui_*.py`) gọi lõi (`graph_app/*.py` không import Streamlit). Không có chiều ngược. Nhờ vậy mọi lõi kiểm thử được mà không cần khởi động Streamlit.
+
+### 2.1 Danh sách module hiện tại (phiên bản 2.8)
+
+| Module | Vai trò | Phụ thuộc chính |
+|---|---|---|
+| `math_engine.py` | Phân tích biểu thức an toàn, lấy mẫu, giao điểm một biến | sympy, numpy, scipy |
+| `equations.py` | Phân loại `y = g(x)`, `z = f(x, y)`, hoặc `F = A − B = 0` | math_engine |
+| `implicit.py` | Đường ẩn 2D, giao điểm ẩn 2D (giao cắt và tiếp xúc), lưới và mặt ẩn 3D | math_engine, refine, contourpy |
+| `refine.py` | Gauss–Newton: chiếu điểm về tập nghiệm, tìm điểm tiếp xúc 3D | math_engine |
+| `surface.py` | Lưới, mặt `z = f(x, y)`, đường giao hai mặt tường minh | math_engine, refine, contourpy |
+| `viewport.py` | Miền tính toán, mật độ lấy mẫu, canh khung theo giao điểm | (thuần Python) |
+| `presets.py` | 20 hàm số nổi tiếng | (dữ liệu) |
+| `plotting.py` | Biểu đồ 2D, đặt nhãn, khung y, cắt gián đoạn, bảng màu | math_engine |
+| `plotting_3d.py` | Biểu đồ 3D, bảng màu, marker điểm tiếp xúc | plotting, surface |
+| `ui_theme.py`, `ui_help.py` | CSS Dark Mode, cheatsheet, hiển thị lỗi | streamlit |
+| `ui_sidebar.py` | Ô nhập động, mẫu, phạm vi trục, tùy chọn tự canh | streamlit, presets |
+| `ui_legend.py`, `ui_focus.py` | Thanh legend, checkbox làm nổi bật từng cặp | streamlit |
+| `ui_2d.py`, `ui_3d.py` | Vẽ đồ thị 2D và cảnh 3D, gọi lõi theo đúng thứ tự | streamlit, toàn bộ lõi |
+| `app.py` | Điểm vào, nhận diện 2D/3D, kiểm tra miền | ui_* |
 
 ---
 
@@ -90,20 +109,19 @@ Sau khi parse với `evaluate=False`, mọi số nguyên được đổi thành 
 - Giá trị phức (do căn số âm trong một số đường dẫn của SymPy) chỉ giữ phần thực khi phần ảo đủ nhỏ, còn lại thành NaN.
 - Mọi `±inf` được đổi thành NaN để Plotly ngắt đường.
 
-### 4.3 Tìm giao điểm
+### 4.3 Tìm giao điểm một biến (giải phương trình)
 
-Bài toán: tìm `x` sao cho `h(x) = f(x) - g(x) = 0` trên `[x_min, x_max]`.
+Bài toán: tìm `x` sao cho `h(x) = f(x) − g(x) = 0` trên `[x_min, x_max]`. Việc tìm nghiệm tách khỏi việc vẽ, nên không dựa vào các điểm vẽ.
 
-1. **Lưới.** Lấy 2000 điểm đều và tính `h`.
-2. **Ứng viên.** Tìm các cực tiểu địa phương của `|h|` trên lưới, bao gồm hai đầu mút. Điểm NaN không bao giờ là ứng viên.
-3. **Thu hẹp.** Với mỗi ứng viên, chạy tìm kiếm tam phân trên `|h|` trong khoảng `[x_{i-1}, x_{i+1}]`, 100 vòng. Các khoảng được xử lý vector hóa cùng lúc.
-4. **Xác nhận.** Chỉ nhận nghiệm khi `|h(x*)| ≤ 1e-9 · max(1, |f(x*)|, |g(x*)|)`. Bước này loại tiệm cận, nơi `|h|` nhỏ nhất trên lưới nhưng không tiến về 0.
-5. **Gộp.** Sắp xếp và gộp các nghiệm cách nhau dưới `1e-6` độ rộng miền.
-6. **Trùng hàm.** Nếu `|h|` gần 0 trên toàn bộ lưới, hai hàm trùng nhau, trả về rỗng.
+1. **Đa thức (nhánh giải đúng).** Nếu `h` là đa thức theo `x`, dùng `Poly.nroots` của SymPy với 30 chữ số. Hệ số nguyên được đổi về `Integer` trước khi nhận diện, vì parser đổi chúng thành `Float`. Nghiệm bội được giữ.
+2. **Đổi dấu.** Với hàm khác, lưới `samples` điểm (tối đa 100 000 khi dò ±200). Mỗi đoạn có `h` đổi dấu được chia đôi đồng loạt trên NumPy (60 vòng). Đoạn chứa điểm NaN bị bỏ, ví dụ tiệm cận của `1/x`.
+3. **Cặp nghiệm trong một ô lưới.** Hai đầu ô cùng dấu nhưng đỉnh ngược dấu: đỉnh được ước lượng bằng parabol qua ba điểm lưới rồi kiểm tra dấu thật.
+4. **Tiếp xúc.** Cực tiểu địa phương của `|h|` không đổi dấu được tối ưu hóa bằng `minimize_scalar`. Cực trị của chính `h` được dùng khi `|h|` hội tụ sang nghiệm bên cạnh.
+5. **Mép miền.** Nghiệm ở mép miền xác định (như `√x = x/2` tại 0) được tìm bằng chia đôi trên tính hữu hạn, với ngưỡng riêng `1e-6`.
+6. **Xác nhận.** Mọi ứng viên phải thỏa `|h(x*)| ≤ 1e-9 · max(1, |f(x*)|, |g(x*)|)`. Bước này loại tiệm cận.
+7. **Gộp và trùng hàm.** Các nghiệm cách nhau dưới `1e-9` độ rộng miền được gộp. Đoạn trùng nhau (`h = 0` liên tục) không được liệt kê từng điểm. Hai hàm trùng hoàn toàn trả về rỗng.
 
-**Vì sao không dùng dò đổi dấu (bisection):** dò đổi dấu bỏ sót tiếp xúc (`x²` với 0), và phải phân biệt tiệm cận với nghiệm thật. Cách tìm cực tiểu của `|h|` và xác nhận giá trị bắt được cả hai trường hợp bằng cùng một đường đi.
-
-**Giới hạn đã biết:** Hai giao điểm nằm trong cùng một khoảng lưới (cách nhau dưới 1/2000 độ rộng miền) có thể bị bỏ sót. Với hàm dao động rất nhanh, cần tăng `samples`.
+**Giới hạn:** nghiệm bội chính xác khoảng `1e-8` (căn bậc hai của epsilon float64). Hai nghiệm cách nhau dưới bước lưới được bắt bằng bước 3, nhưng không có đảm bảo tổng quát cho mọi hàm dao động.
 
 ### 4.4 Khung tung độ và cắt gián đoạn
 
@@ -115,7 +133,8 @@ Bài toán: tìm `x` sao cho `h(x) = f(x) - g(x) = 0` trên `[x_min, x_max]`.
 
 ## 5. Trạng thái và hiệu năng
 
-- **Không lưu trạng thái phía server.** Mọi kết quả được tính lại mỗi lần chạy script. Đo cục bộ với ba hàm, 1500 điểm mỗi hàm và 7 giao điểm: khoảng 30 ms cho mỗi lần vẽ sau lần chạy đầu (lần đầu khoảng 265 ms do khởi tạo).
+- **Không lưu trạng thái phía server.** Mọi kết quả được tính lại mỗi lần chạy script.
+- **Số đo phiên bản 2.8** (máy phát triển, Windows): một cặp dao động dày `sin(100x)` với `cos(x)` trên `±200` mất khoảng 0.3 s và cho đúng 12733 nghiệm. Sáu hàm với 15 cặp chạy trong AppTest khoảng 1.4 s. Cặp đường ẩn với hàm tường minh trên khung ±200 mất khoảng 0.2–0.8 s mỗi cặp.
 - Không dùng `st.cache_data` vì `ParsedFunction` chứa hàm đã biên dịch, không tuần tự hóa được ổn định. Chi phí tính đã đủ thấp để không cần cache.
 - Giới hạn độ dài biểu thức 200 ký tự và số mẫu cố định chặn các trường hợp tốn tài nguyên.
 
@@ -144,7 +163,7 @@ Bài toán: tìm `x` sao cho `h(x) = f(x) - g(x) = 0` trên `[x_min, x_max]`.
 ### 8.1 Bố cục module
 
 ```
-app.py ── radio "view_mode" ──┬──▶ graph_app/ui_2d.py ──▶ math_engine, plotting
+app.py (nhận diện tự động, không còn radio) ──┬──▶ graph_app/ui_2d.py ──▶ math_engine, plotting
                               └──▶ graph_app/ui_3d.py ──▶ math_engine, surface, plotting_3d
 ```
 
@@ -171,7 +190,7 @@ Chế độ 2D và 3D chỉ chia sẻ `math_engine` (parser dùng chung) và h�
 3. Với mỗi điểm `(x, y)` trên đường, tính lại `z = f₁(x, y)` để đường nằm đúng trên mặt thứ nhất, không phụ thuộc độ phân giải lưới.
 4. Trường hợp suy biến: `H` bằng 0 ở mọi đỉnh (hai mặt trùng nhau) trả về rỗng. Hai mặt song song không có đường mức 0 nên cũng trả về rỗng.
 
-Giới hạn: nội suy tuyến tính giữa các đỉnh lưới làm sai số vị trí đường giao cỡ bước lưới. Tăng độ phân giải để giảm sai số.
+Từ phiên bản 2.8, bước 3 được tinh chỉnh: mỗi điểm được chiếu về `f₁ − f₂ = 0` bằng Gauss–Newton (`refine.project_points`), rồi z = f₁(x, y). Sai số đo được khoảng `1e-16`, không còn phụ thuộc bước lưới.
 
 ### 8.5 Khung z
 
@@ -200,9 +219,12 @@ Chia 0, căn số âm, log của số không dương trả về `NaN`. Plotly kh
 
 | Trường hợp | Thuật toán | Lý do |
 |---|---|---|
-| 2D: hai `y = f(x)` | Cực tiểu của `|f − g|` + tam phân (`math_engine`) | Chính xác, nhanh, bắt được tiếp xúc |
-| 2D: có đường ẩn | Ô lưới có cả F và G đổi dấu → nghiệm tuyến tính → Newton trên `F = G = 0` (`implicit`) | Không cần chia theo x; xử lý được đường cong bất kỳ |
-| 3D: hai mặt ẩn | Mỗi voxel có cả F và G đổi dấu → giao hai mặt phẳng xấp xỉ → cắt theo biên voxel | Vectơ hóa bằng NumPy, không cần vòng lặp Python |
+| 2D: hai `y = f(x)` | Đa thức giải đúng; còn lại: đổi dấu + chia đôi, cặp trong ô, tiếp xúc (mục 4.3) | Chính xác, bắt được nghiệm bội và tiếp xúc |
+| 2D: có đường ẩn, giao cắt | Ô lưới có cả F và G đổi dấu → nghiệm tuyến tính → Newton trên `F = G = 0` (`implicit`) | Không cần chia theo x; xử lý được đường cong bất kỳ |
+| 2D: có đường ẩn, tiếp xúc | Cực tiểu của `F² + G²` (chuẩn hóa) → Levenberg–Marquardt (`implicit._tangent_solutions`) | Tại tiếp xúc, Jacobian suy biến nên nhánh giao cắt không hội tụ |
+| 3D: hai mặt ẩn | Voxel có cả F và G đổi dấu → giao hai mặt phẳng xấp xỉ → cắt theo biên voxel → chiếu đầu mút về `{F = G = 0}` | Vectơ hóa bằng NumPy; đầu mút chính xác đến `1e-16` |
+| 3D: điểm tiếp xúc hai mặt ẩn | Cực tiểu 3D của `F² + G²` → Gauss–Newton (`refine.isolated_tangencies`) | Điểm nghiệm kép, chính xác đến `1e-8` |
+| 3D: hai mặt tường minh | Đường mức `f₁ − f₂ = 0` (contourpy) → chiếu về đường thật → nâng z = f₁ | Đường giao khớp cả hai mặt đến `1e-16` |
 
 Trường hợp trùng nhau hoàn toàn được nhận diện bằng `|F − G|` xấp xỉ 0 trên toàn lưới, và trả về rỗng.
 
@@ -276,3 +298,31 @@ Hai nhánh này cho cùng một kiểu kết quả là danh sách đoạn thẳn
 - Đường giao 3D được gộp theo cặp, mỗi cặp một trace `Scatter3d`. Nhờ vậy màu và độ dày có thể đặt riêng cho từng cặp.
 - `ui_theme.render_header` dựng header bằng `st.columns` với `vertical_alignment="center"`. Badge canh phải bằng CSS `text-align: right`.
 - Hộp thoại cú pháp dùng `st.dialog`, mở bằng nút trong sidebar. Hướng dẫn ngắn dùng `st.popover`.
+
+---
+
+## 12. Khung nhìn, canh khung và hiển thị số lượng lớn (phiên bản 2.x)
+
+### 12.1 Thứ tự tính trong một lần vẽ 2D
+
+Thứ tự này là quy tắc bắt buộc (`ui_2d.render_2d`, CLAUDE.md mục 18):
+
+1. **Cửa sổ dò.** Trục tự canh dò trên `±200` (`SEARCH_HALF_WIDTH`). Trục cố định dò trên khung người dùng nhập, mở rộng bằng `viewport.domain_for`.
+2. **Giao điểm.** Tính mọi cặp trên cửa sổ dò (mục 4.3 và 9.2).
+3. **Canh khung x.** Nếu tự canh: `viewport.fit_view` lấy bao của giao điểm (đã lọc theo khung y nếu y cố định), có đệm 10% mỗi phía, rộng tối thiểu 12.
+4. **Vẽ đường.** Đường được tính trên `domain_for(view_x)`. Đường ẩn nhờ vậy mịn khi xem gần.
+5. **Canh khung y.** Nếu tự canh: khung y lấy từ đường và giao điểm trong khung x. Nếu khung vượt miền đã vẽ, đường được vẽ lại (tối đa `FRAME_PASSES = 4` lượt). Điều này ngăn đường tròn bán kính 50 bị cắt ở ±18.
+6. **Nhãn và bảng.** Nhãn đặt sau khi khung đã cố định.
+
+### 12.2 Đặt nhãn và giới hạn hiển thị
+
+- `plotting.place_labels` thử 24 vị trí quanh mỗi điểm theo thứ tự ưu tiên. Vị trí nằm ngoài vùng vẽ hoặc chồng nhãn khác bị loại. Không có vị trí nào thì nhãn bị ẩn (trả về `None`), điểm vẫn có marker.
+- Việc đặt nhãn có độ phức tạp khoảng bình phương số điểm, nên trên `MAX_LABELED_POINTS = 200` không đặt nhãn nào.
+- Dòng liệt kê của một cặp chỉ hiện tọa độ khi có tối đa `MAX_LISTED_POINTS = 50` điểm. Bảng chỉ hiện khi có tối đa `MAX_TABLE_ROWS = 500` dòng; trên mức đó chỉ ghi số lượng.
+
+### 12.3 Lỗi đã sửa và bài học
+
+- **Khung đặt trước giao điểm.** Khung mặc định `±6` làm giao điểm `x ≈ −6.56` bị ẩn. Từ phiên bản 2.6, khung được canh sau khi có giao điểm.
+- **Đoạn phẳng trong `|h|`.** Điểm trên đoạn `|h|` không đổi bị coi là cực tiểu, tạo hàng trăm nghìn ứng viên. Quy tắc cực tiểu dùng `<` ở phía phải để một đoạn phẳng chỉ cho một ứng viên.
+- **Ngưỡng gộp quá lớn.** Gộp nghiệm dưới `1e-6` độ rộng miền làm mất cặp nghiệm cách nhau `3e-4` trên `±200`. Nay là `1e-9`.
+- **Làm tròn nhãn.** Tọa độ tiếp điểm có sai số `1e-8`, nên ngưỡng làm tròn về 0 là `1e-6` (`implicit._snap_zero`). Ngưỡng `1e-10` cũ làm nhãn hiện `-0.0000`.
